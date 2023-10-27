@@ -1,0 +1,1 @@
+{"version":2,"languages":{"nodejs-npm":{"specfileHash":"7af86cd75ef0c59e7067b778637af306","lockfileHash":"6d5857c3d4b0bda89ca12de59fe9a9e2","guessedImports":["vite","@vitejs/plugin-react","react","react-dom","socket.io-client"],"guessedImportsHash":"b4365cbad131e523b7aa12a9db93604b"}}}
