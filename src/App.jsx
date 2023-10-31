@@ -254,19 +254,44 @@ const AudioTest = ({ }) => {
       if (nextData != undefined && nextData.gptId == data.gptId) {
         characterRef.current.UpdateAnimations("test QUOTE", nextData.animation);
 
-        playNextAudio(nextSpeechId);
+        // Crossfade by reducing overlapTime gradually
+        let initialOverlapTime = 0.06; // Initial overlap time
+        let fadeDuration = 1000000; // Crossfade duration in milliseconds
+
+        function crossfade() {
+          if (initialOverlapTime > 0) {
+            // Fade in the current source
+            gainNode.gain.setValueAtTime(0, audioContext.current.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1, audioContext.current.currentTime + initialOverlapTime);
+
+            // Fade out the next source
+            nextGainNode.gain.setValueAtTime(1, audioContext.current.currentTime);
+            nextGainNode.gain.linearRampToValueAtTime(0, audioContext.current.currentTime + initialOverlapTime);
+
+            // Reduce overlapTime
+            initialOverlapTime -= 0.005;
+            setTimeout(crossfade, fadeDuration / (initialOverlapTime * 100000000));
+          } else {
+            // Remove the next source after crossfade
+            nextSource.disconnect();
+            nextGainNode.disconnect();
+
+            // Setup a callback to run just before the audio ends
+            setTimeout(() => {
+              // playNextAudio(speechId);
+            }, ((buffer.duration) * 1000) - 10); // Convert duration to milliseconds for setTimeout
+          }
+        }
+
+        // Start the crossfade process
+        crossfade();
       }
-      // Set the audio started status
 
       return;
     }
 
     // Shift the first audio data from the queue
     const floatData = data.audioQueue.shift();
-
-
-
-
 
     // Create a buffer and a source
     const buffer = audioContext.current.createBuffer(1, floatData.length, audioContext.current.sampleRate);
@@ -281,28 +306,58 @@ const AudioTest = ({ }) => {
     data.source = source;
 
     // Overlap and Crossfade
-    const overlapTime = 0.09; // 20 milliseconds overlap
-    const overlapTime2 = 0.04; // 20 milliseconds overlap
+    const overlapTime = 0.06; // Initial overlap time
     let currentTime = audioContext.current.currentTime;
+
     // Fade in the current source
-    gainNode.gain.setValueAtTime(0, audioContext.current.currentTime); // Start at zero volume
-    gainNode.gain.linearRampToValueAtTime(1, audioContext.current.currentTime + overlapTime); // Fade in exponentially over the overlapTime
+    gainNode.gain.setValueAtTime(0, audioContext.current.currentTime);
+    gainNode.gain.linearRampToValueAtTime(1, audioContext.current.currentTime + overlapTime);
+
+    if (prevDuration > 0) {
+      // Crossfade by reducing overlapTime gradually
+      let initialOverlapTime = overlapTime; // Initial overlap time
+      let fadeDuration = 1000000; // Crossfade duration in milliseconds
+
+      function crossfade() {
+        if (initialOverlapTime > 0) {
+          // Fade in the current source
+          gainNode.gain.setValueAtTime(0, audioContext.current.currentTime);
+          gainNode.gain.linearRampToValueAtTime(1, audioContext.current.currentTime + initialOverlapTime);
+
+          // Fade out the next source
+          nextGainNode.gain.setValueAtTime(1, audioContext.current.currentTime);
+          nextGainNode.gain.linearRampToValueAtTime(0, audioContext.current.currentTime + initialOverlapTime);
+
+          // Reduce overlapTime
+          initialOverlapTime -= 0.005;
+          setTimeout(crossfade, fadeDuration / (initialOverlapTime * 100000000));
+        } else {
+          // Remove the next source after crossfade
+          nextSource.disconnect();
+          nextGainNode.disconnect();
+        }
+      }
+
+      // Start the crossfade process
+      crossfade();
+    }
 
     // Setup a callback to run just before the audio ends
     setTimeout(() => {
-
       // playNextAudio(speechId);
+    }, ((buffer.duration) * 1000) - 10); // Convert duration to milliseconds for setTimeout
 
-    }, ((buffer.duration) * 1000) - 10);  // Convert duration to milliseconds for setTimeout
     // Set up an onended event listener for the source
     source.onended = () => {
       // When the audio ends, play the next audio
       //onAudioDataPlayed(speechId, buffer.duration)
       playNextAudio(speechId, prevDuration - buffer.duration);
     };
+
     // Start playing the audio
     source.start(currentTime + prevDuration);
   }
+
   /**
    * This function retrieves the AvatarSpeechData object associated with a given speech ID.
    * 
@@ -338,7 +393,7 @@ const AudioTest = ({ }) => {
   };
 
   const TriggerSpeech = () => {
-    let text = "this is a test to showcase the poping and clicking sounds"
+    let text = "this is a test to showcase the poping and clicking sounds,this is a test to showcase the poping and clicking sounds"
     let data = new AvatarSpeechData(0, text)
     data.speechId = Object.keys(avatarSpeechDataRef.current).length;
     avatarSpeechDataRef.current[data.speechId] = data;
